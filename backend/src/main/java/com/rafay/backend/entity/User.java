@@ -42,14 +42,14 @@ public class User {
 
     private LocalDateTime updatedAt;
 
-
+    //runs when creating entity
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 
-
+    //runs when updating entity
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
