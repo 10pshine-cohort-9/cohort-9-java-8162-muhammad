@@ -5,6 +5,7 @@ import com.rafay.backend.dto.request.LoginRequest;
 import com.rafay.backend.dto.response.ApiResponse;
 import com.rafay.backend.dto.response.LoginResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.rafay.backend.dto.request.RegisterRequest;
@@ -15,9 +16,12 @@ import com.rafay.backend.repository.UserRepository;
 @Service
 public class AuthService {
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
+
     public AuthService(UserRepository userRepository)
     {
         this.userRepository=userRepository;
+        this.passwordEncoder = new BCryptPasswordEncoder();
     }
     public RegisterResponse registerUser(RegisterRequest request)
     {
@@ -26,7 +30,7 @@ public class AuthService {
         user.setLastName(request.getLastname());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         User savedUser = userRepository.save(user);
 
@@ -52,7 +56,7 @@ public class AuthService {
 
         LoginResponse response = new LoginResponse();
 
-        if (user != null && request.getPassword() != null && request.getPassword().equals(user.getPassword())) {
+        if (user != null && request.getPassword() != null && passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             response.setMessage("Login successful");
         } else {
             response.setMessage("Invalid credentials");
@@ -65,16 +69,17 @@ public class AuthService {
         ApiResponse response = new ApiResponse();
         if (request.getCurrentPassword().equals(request.getNewPassword())) {
             response.setMessage("New password cannot be the same as the current password");
+            return response;
         }
 
         User user = userRepository.findAll().stream()
                 .filter(existingUser -> existingUser.getPassword() != null
-                        && existingUser.getPassword().equals(request.getCurrentPassword()))
+                        && passwordEncoder.matches(request.getCurrentPassword(), existingUser.getPassword()))
                 .findFirst()
                 .orElse(null);
 
         if (user != null) {
-            user.setPassword(request.getNewPassword());
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
             userRepository.save(user);
             response.setMessage("Password changed successfully");
             response.setSuccess(true);
