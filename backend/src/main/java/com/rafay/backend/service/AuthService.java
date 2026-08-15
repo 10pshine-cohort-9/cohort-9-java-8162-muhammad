@@ -4,6 +4,7 @@ import com.rafay.backend.dto.request.ChangePasswordRequest;
 import com.rafay.backend.dto.request.LoginRequest;
 import com.rafay.backend.dto.response.ApiResponse;
 import com.rafay.backend.dto.response.LoginResponse;
+import com.rafay.backend.security.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,10 +18,11 @@ import com.rafay.backend.repository.UserRepository;
 public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-
-    public AuthService(UserRepository userRepository)
+    private final JwtService jwtService;
+    public AuthService(UserRepository userRepository, JwtService jwtService)
     {
         this.userRepository=userRepository;
+        this.jwtService = jwtService;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
     public RegisterResponse registerUser(RegisterRequest request)
@@ -47,6 +49,7 @@ public class AuthService {
 
     public LoginResponse loginUser(@Valid LoginRequest request) {
         User user = userRepository.findAll().stream()
+                //find a user by email or phone number
                 .filter(existingUser ->
                         (existingUser.getEmail() != null && existingUser.getEmail().equalsIgnoreCase(request.getIdentifier()))
                                 || (existingUser.getPhoneNumber() != null && existingUser.getPhoneNumber().equals(request.getIdentifier()))
@@ -56,9 +59,21 @@ public class AuthService {
 
         LoginResponse response = new LoginResponse();
 
-        if (user != null && request.getPassword() != null && passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (user != null
+                && request.getPassword() != null
+                && passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword())) {
+
+            String token = jwtService.generateToken(
+                    user.getEmail()
+            );
+
             response.setMessage("Login successful");
+            response.setToken(token);
+
         } else {
+
             response.setMessage("Invalid credentials");
         }
 

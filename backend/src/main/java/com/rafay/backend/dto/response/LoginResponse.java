@@ -8,9 +8,7 @@ import lombok.Setter;
 public class LoginResponse {
 
     private String message;
-
-    // Will add JWT later
-    // private String token;
-
+    private String token;
+    // JWT added
     // Getters and Setters
 }

@@ -16,7 +16,7 @@ import com.rafay.backend.service.AuthService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("api/v1/auth")
 public class AuthController {
     private final AuthService authService;
 
