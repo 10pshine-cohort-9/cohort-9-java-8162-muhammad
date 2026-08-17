@@ -4,6 +4,7 @@ import com.rafay.backend.dto.request.ChangePasswordRequest;
 import com.rafay.backend.dto.request.LoginRequest;
 import com.rafay.backend.dto.response.ApiResponse;
 import com.rafay.backend.dto.response.LoginResponse;
+import com.rafay.backend.exception.ConflictException;
 import com.rafay.backend.security.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
@@ -15,7 +16,7 @@ import com.rafay.backend.dto.request.RegisterRequest;
 import com.rafay.backend.dto.response.RegisterResponse;
 import com.rafay.backend.entity.User;
 import com.rafay.backend.repository.UserRepository;
-
+import org.springframework.dao.DataIntegrityViolationException;
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -27,25 +28,26 @@ public class AuthService {
         this.jwtService = jwtService;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
-    public RegisterResponse registerUser(RegisterRequest request)
-    {
+    public RegisterResponse registerUser(RegisterRequest request) {
         User user = new User();
         user.setFirstName(request.getFirstname());
         user.setLastName(request.getLastname());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-
-        User savedUser = userRepository.save(user);
-
-        RegisterResponse response = new RegisterResponse();
-        response.setId(savedUser.getId());
-        response.setFirstName(savedUser.getFirstName());
-        response.setLastName(savedUser.getLastName());
-        response.setEmail(savedUser.getEmail());
-        response.setPhoneNumber(savedUser.getPhoneNumber());
-        response.setMessage("User registered successfully");
-
+        RegisterResponse response;
+        try {
+            User savedUser = userRepository.save(user);
+            response = new RegisterResponse();
+            response.setId(savedUser.getId());
+            response.setFirstName(savedUser.getFirstName());
+            response.setLastName(savedUser.getLastName());
+            response.setEmail(savedUser.getEmail());
+            response.setPhoneNumber(savedUser.getPhoneNumber());
+            response.setMessage("User registered successfully");
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("Email or phone number already exists");
+        }
         return response;
     }
 
