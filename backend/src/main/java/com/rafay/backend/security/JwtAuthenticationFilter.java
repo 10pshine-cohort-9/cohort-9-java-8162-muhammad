@@ -8,10 +8,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -47,15 +50,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
+        // Parse and validate JWT once
+        Optional<String> subject =
+                jwtService.extractSubject(token);
+
         // Invalid JWT → continue without authentication
-        if (!jwtService.isValid(token)) {
+        if (subject.isEmpty()) {
 
             filterChain.doFilter(request, response);
             return;
         }
 
-        String email =
-                jwtService.extractUsername(token);
+        String email = subject.get();
 
         User user = userRepository
                 .findByEmail(email)
@@ -65,10 +71,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
-                            user,
+                            user.getEmail(),
                             null,
-                            null
+                            List.of()
                     );
+
+            authentication.setDetails(
+                    new WebAuthenticationDetailsSource()
+                            .buildDetails(request)
+            );
 
             SecurityContextHolder
                     .getContext()
