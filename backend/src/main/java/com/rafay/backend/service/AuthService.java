@@ -6,6 +6,8 @@ import com.rafay.backend.dto.response.ApiResponse;
 import com.rafay.backend.dto.response.LoginResponse;
 import com.rafay.backend.security.JwtService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -81,26 +83,54 @@ public class AuthService {
     }
 
     public ApiResponse changePassword(@Valid ChangePasswordRequest request) {
+
         ApiResponse response = new ApiResponse();
+
         if (request.getCurrentPassword().equals(request.getNewPassword())) {
-            response.setMessage("New password cannot be the same as the current password");
+            response.setMessage(
+                    "New password cannot be the same as the current password"
+            );
             return response;
         }
 
-        User user = userRepository.findAll().stream()
-                .filter(existingUser -> existingUser.getPassword() != null
-                        && passwordEncoder.matches(request.getCurrentPassword(), existingUser.getPassword()))
-                .findFirst()
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null ||
+                !authentication.isAuthenticated()) {
+
+            response.setMessage("Unauthorized");
+            return response;
+        }
+
+        String email = authentication.getName();
+
+        User user = userRepository
+                .findByEmail(email)
                 .orElse(null);
 
-        if (user != null) {
-            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-            userRepository.save(user);
-            response.setMessage("Password changed successfully");
-            response.setSuccess(true);
-        } else {
-            response.setMessage("Current password is incorrect");
+        if (user == null) {
+            response.setMessage("User not found");
+            return response;
         }
+
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(),
+                user.getPassword())) {
+
+            response.setMessage("Current password is incorrect");
+            return response;
+        }
+
+        user.setPassword(
+                passwordEncoder.encode(request.getNewPassword())
+        );
+
+        userRepository.save(user);
+
+        response.setMessage("Password changed successfully");
+        response.setSuccess(true);
+
         return response;
     }
 }
