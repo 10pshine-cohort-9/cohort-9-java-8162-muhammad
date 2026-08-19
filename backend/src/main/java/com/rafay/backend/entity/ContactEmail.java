@@ -3,7 +3,8 @@ package com.rafay.backend.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
+@Getter
+@Setter
 @Entity
 @Table(name = "contact_emails")
 public class ContactEmail {
