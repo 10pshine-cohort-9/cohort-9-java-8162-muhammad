@@ -86,7 +86,18 @@ public class ContactService {
 
         return mapToResponse(savedContact);
     }
+    public ContactResponse getContact(
+            Long contactId,
+            String userEmail) {
 
+        Contact contact = contactRepository
+                .findByIdAndUserEmail(contactId, userEmail)
+                .orElseThrow(() ->
+                        new RuntimeException("Contact not found")
+                );
+
+        return mapToResponse(contact);
+    }
     public Page<ContactResponse> getContacts(
             String userEmail,
             Pageable pageable) {
@@ -168,5 +179,85 @@ public class ContactService {
         response.setPhoneNumbers(phoneNumbers);
 
         return response;
+    }
+    public ContactResponse updateContact(
+            Long contactId,
+            ContactRequest request,
+            String userEmail) {
+
+        Contact contact = contactRepository
+                .findByIdAndUserEmail(contactId, userEmail)
+                .orElseThrow(() ->
+                        new RuntimeException("Contact not found")
+                );
+
+        contact.setFirstName(request.getFirstName());
+        contact.setLastName(request.getLastName());
+        contact.setTitle(request.getTitle());
+
+        Contact updatedContact =
+                contactRepository.save(contact);
+
+        // Replace existing emails
+        List<ContactEmail> existingEmails =
+                contactEmailRepository.findByContactId(contactId);
+
+        contactEmailRepository.deleteAll(existingEmails);
+
+        if (request.getEmails() != null) {
+
+            request.getEmails().forEach(emailRequest -> {
+
+                ContactEmail email = new ContactEmail();
+
+                email.setEmail(emailRequest.getEmail());
+                email.setLabel(emailRequest.getLabel());
+                email.setContact(updatedContact);
+
+                contactEmailRepository.save(email);
+            });
+        }
+
+        // Replace existing phone numbers
+        List<ContactPhone> existingPhones =
+                contactPhoneRepository.findByContactId(contactId);
+
+        contactPhoneRepository.deleteAll(existingPhones);
+
+        if (request.getPhoneNumbers() != null) {
+
+            request.getPhoneNumbers().forEach(phoneRequest -> {
+
+                ContactPhone phone = new ContactPhone();
+
+                phone.setPhoneNumber(phoneRequest.getPhoneNumber());
+                phone.setLabel(phoneRequest.getLabel());
+                phone.setContact(updatedContact);
+
+                contactPhoneRepository.save(phone);
+            });
+        }
+
+        return mapToResponse(updatedContact);
+    }
+    public void deleteContact(
+            Long contactId,
+            String userEmail) {
+
+        Contact contact = contactRepository
+                .findByIdAndUserEmail(contactId, userEmail)
+                .orElseThrow(() ->
+                        new RuntimeException("Contact not found")
+                );
+
+        contactEmailRepository.deleteAll(
+                contactEmailRepository.findByContactId(contactId)
+        );
+
+        contactPhoneRepository.deleteAll(
+                contactPhoneRepository.findByContactId(contactId)
+        );
+
+        contactRepository.delete(contact);
     }
 }

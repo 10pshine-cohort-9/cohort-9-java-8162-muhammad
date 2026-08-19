@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 @RestController
 @RequestMapping("/api/v1/contacts")
 public class ContactController {
@@ -20,7 +23,37 @@ public class ContactController {
     public ContactController(ContactService contactService) {
         this.contactService = contactService;
     }
+    @PutMapping("/{id}")
+    public ResponseEntity<ContactResponse> updateContact(
+            @PathVariable Long id,
+            @RequestBody @Valid ContactRequest request,
+            Authentication authentication) {
 
+        String userEmail = authentication.getName();
+
+        ContactResponse response =
+                contactService.updateContact(
+                        id,
+                        request,
+                        userEmail
+                );
+
+        return ResponseEntity.ok(response);
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteContact(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        String userEmail = authentication.getName();
+
+        contactService.deleteContact(
+                id,
+                userEmail
+        );
+
+        return ResponseEntity.noContent().build();
+    }
     @PostMapping
     public ResponseEntity<ContactResponse> createContact(
             @Valid @RequestBody ContactRequest request,
@@ -63,6 +96,21 @@ public class ContactController {
                     pageable
             );
         }
+
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<ContactResponse> getContact(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        String userEmail = authentication.getName();
+
+        ContactResponse response =
+                contactService.getContact(
+                        id,
+                        userEmail
+                );
 
         return ResponseEntity.ok(response);
     }
