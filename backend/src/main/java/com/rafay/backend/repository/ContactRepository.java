@@ -11,4 +11,12 @@ public interface ContactRepository extends JpaRepository<Contact, Long> {
             String email,
             Pageable pageable
     );
+
+    Page<Contact> findByUserEmailAndFirstNameContainingIgnoreCaseOrUserEmailAndLastNameContainingIgnoreCase(
+            String email1,
+            String firstName,
+            String email2,
+            String lastName,
+            Pageable pageable
+    );
 }

@@ -38,6 +38,7 @@ public class ContactController {
     @GetMapping
     public ResponseEntity<Page<ContactResponse>> getContacts(
             Authentication authentication,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -45,11 +46,23 @@ public class ContactController {
 
         String userEmail = authentication.getName();
 
-        Page<ContactResponse> response =
-                contactService.getContacts(
-                        userEmail,
-                        pageable
-                );
+        Page<ContactResponse> response;
+
+        if (search == null || search.trim().isEmpty()) {
+
+            response = contactService.getContacts(
+                    userEmail,
+                    pageable
+            );
+
+        } else {
+
+            response = contactService.searchContacts(
+                    userEmail,
+                    search.trim(),
+                    pageable
+            );
+        }
 
         return ResponseEntity.ok(response);
     }

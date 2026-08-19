@@ -99,7 +99,23 @@ public class ContactService {
 
         return contacts.map(this::mapToResponse);
     }
+    public Page<ContactResponse> searchContacts(
+            String userEmail,
+            String search,
+            Pageable pageable) {
 
+        Page<Contact> contacts =
+                contactRepository
+                        .findByUserEmailAndFirstNameContainingIgnoreCaseOrUserEmailAndLastNameContainingIgnoreCase(
+                                userEmail,
+                                search,
+                                userEmail,
+                                search,
+                                pageable
+                        );
+
+        return contacts.map(this::mapToResponse);
+    }
     private ContactResponse mapToResponse(Contact contact) {
 
         ContactResponse response = new ContactResponse();
