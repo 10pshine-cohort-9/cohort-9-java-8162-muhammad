@@ -8,10 +8,12 @@ import com.rafay.backend.entity.Contact;
 import com.rafay.backend.entity.ContactEmail;
 import com.rafay.backend.entity.ContactPhone;
 import com.rafay.backend.entity.User;
+import com.rafay.backend.exception.ResourceNotFoundException;
 import com.rafay.backend.repository.ContactEmailRepository;
 import com.rafay.backend.repository.ContactPhoneRepository;
 import com.rafay.backend.repository.ContactRepository;
 import com.rafay.backend.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,13 +39,13 @@ public class ContactService {
         this.contactPhoneRepository = contactPhoneRepository;
         this.userRepository = userRepository;
     }
-
+    @Transactional
     public ContactResponse createContact(
             ContactRequest request,
             String userEmail) {
 
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Contact contact = new Contact();
 
@@ -93,7 +95,7 @@ public class ContactService {
         Contact contact = contactRepository
                 .findByIdAndUserEmail(contactId, userEmail)
                 .orElseThrow(() ->
-                        new RuntimeException("Contact not found")
+                        new ResourceNotFoundException("Contact not found")
                 );
 
         return mapToResponse(contact);
@@ -180,6 +182,7 @@ public class ContactService {
 
         return response;
     }
+    @Transactional
     public ContactResponse updateContact(
             Long contactId,
             ContactRequest request,
@@ -188,7 +191,7 @@ public class ContactService {
         Contact contact = contactRepository
                 .findByIdAndUserEmail(contactId, userEmail)
                 .orElseThrow(() ->
-                        new RuntimeException("Contact not found")
+                        new ResourceNotFoundException("Contact not found")
                 );
 
         contact.setFirstName(request.getFirstName());
@@ -240,6 +243,7 @@ public class ContactService {
 
         return mapToResponse(updatedContact);
     }
+    @Transactional
     public void deleteContact(
             Long contactId,
             String userEmail) {
@@ -247,7 +251,7 @@ public class ContactService {
         Contact contact = contactRepository
                 .findByIdAndUserEmail(contactId, userEmail)
                 .orElseThrow(() ->
-                        new RuntimeException("Contact not found")
+                        new ResourceNotFoundException("Contact not found")
                 );
 
         contactEmailRepository.deleteAll(
