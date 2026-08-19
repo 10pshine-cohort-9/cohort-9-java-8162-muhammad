@@ -1,6 +1,8 @@
 package com.rafay.backend.service;
 
 import com.rafay.backend.dto.request.ContactRequest;
+import com.rafay.backend.dto.response.ContactEmailResponse;
+import com.rafay.backend.dto.response.ContactPhoneResponse;
 import com.rafay.backend.dto.response.ContactResponse;
 import com.rafay.backend.entity.Contact;
 import com.rafay.backend.entity.ContactEmail;
@@ -10,7 +12,11 @@ import com.rafay.backend.repository.ContactEmailRepository;
 import com.rafay.backend.repository.ContactPhoneRepository;
 import com.rafay.backend.repository.ContactRepository;
 import com.rafay.backend.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class ContactService {
@@ -81,6 +87,19 @@ public class ContactService {
         return mapToResponse(savedContact);
     }
 
+    public Page<ContactResponse> getContacts(
+            String userEmail,
+            Pageable pageable) {
+
+        Page<Contact> contacts =
+                contactRepository.findByUserEmail(
+                        userEmail,
+                        pageable
+                );
+
+        return contacts.map(this::mapToResponse);
+    }
+
     private ContactResponse mapToResponse(Contact contact) {
 
         ContactResponse response = new ContactResponse();
@@ -89,6 +108,48 @@ public class ContactService {
         response.setFirstName(contact.getFirstName());
         response.setLastName(contact.getLastName());
         response.setTitle(contact.getTitle());
+
+        // Map emails
+        List<ContactEmailResponse> emails =
+                contactEmailRepository
+                        .findByContactId(contact.getId())
+                        .stream()
+                        .map(email -> {
+
+                            ContactEmailResponse emailResponse =
+                                    new ContactEmailResponse();
+
+                            emailResponse.setId(email.getId());
+                            emailResponse.setEmail(email.getEmail());
+                            emailResponse.setLabel(email.getLabel());
+
+                            return emailResponse;
+                        })
+                        .toList();
+
+        response.setEmails(emails);
+
+        // Map phone numbers
+        List<ContactPhoneResponse> phoneNumbers =
+                contactPhoneRepository
+                        .findByContactId(contact.getId())
+                        .stream()
+                        .map(phone -> {
+
+                            ContactPhoneResponse phoneResponse =
+                                    new ContactPhoneResponse();
+
+                            phoneResponse.setId(phone.getId());
+                            phoneResponse.setPhoneNumber(
+                                    phone.getPhoneNumber()
+                            );
+                            phoneResponse.setLabel(phone.getLabel());
+
+                            return phoneResponse;
+                        })
+                        .toList();
+
+        response.setPhoneNumbers(phoneNumbers);
 
         return response;
     }
