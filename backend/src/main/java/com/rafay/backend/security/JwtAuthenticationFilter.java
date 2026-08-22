@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -19,13 +20,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
-public class JwtAuthenticationFilter
-        extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger =
-            LoggerFactory.getLogger(
-                    JwtAuthenticationFilter.class
-            );
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -48,52 +46,58 @@ public class JwtAuthenticationFilter
         String authHeader =
                 request.getHeader("Authorization");
 
-        // No JWT -> continue the request
-        if (authHeader == null
-                || !authHeader.startsWith("Bearer ")) {
+        // No JWT → continue the request
+        if (authHeader == null ||
+                !authHeader.startsWith("Bearer ")) {
 
-            filterChain.doFilter(
-                    request,
-                    response
-            );
-
+            filterChain.doFilter(request, response);
             return;
         }
 
-        String token =
-                authHeader.substring(7);
+        String token = authHeader.substring(7);
 
-        logger.debug(
-                "JWT authentication attempt for request: {}",
-                request.getRequestURI()
-        );
-
+        // Parse and validate JWT
         Optional<String> subject =
                 jwtService.extractSubject(token);
 
-        // Invalid JWT -> continue without authentication
+        // Invalid JWT → continue without authentication
         if (subject.isEmpty()) {
 
-            logger.warn(
-                    "Invalid JWT received for request: {}",
-                    request.getRequestURI()
+            logger.warn("Invalid JWT received");
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String email = subject.get();
+
+        User user;
+
+        try {
+
+            user = userRepository
+                    .findByEmail(email)
+                    .orElse(null);
+
+        } catch (DataAccessException ex) {
+
+            logger.error(
+                    "Failed to retrieve user while processing authentication",
+                    ex
             );
 
-            filterChain.doFilter(
-                    request,
-                    response
+            response.setStatus(
+                    HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+            );
+
+            response.setContentType("application/json");
+
+            response.getWriter().write(
+                    "{\"message\":\"Internal server error\"}"
             );
 
             return;
         }
-
-        String email =
-                subject.get();
-
-        User user =
-                userRepository
-                        .findByEmail(email)
-                        .orElse(null);
 
         if (user != null) {
 
@@ -111,26 +115,13 @@ public class JwtAuthenticationFilter
 
             SecurityContextHolder
                     .getContext()
-                    .setAuthentication(
-                            authentication
-                    );
+                    .setAuthentication(authentication);
 
             logger.debug(
-                    "JWT authentication successful for user: {}",
-                    email
-            );
-
-        } else {
-
-            logger.warn(
-                    "JWT subject does not belong to an existing user: {}",
-                    email
+                    "JWT authentication successful"
             );
         }
 
-        filterChain.doFilter(
-                request,
-                response
-        );
+        filterChain.doFilter(request, response);
     }
 }

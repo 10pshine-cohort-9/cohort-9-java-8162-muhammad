@@ -18,7 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-
+import org.springframework.security.authentication.BadCredentialsException;
 @Service
 public class AuthService {
 
@@ -41,10 +41,7 @@ public class AuthService {
     public RegisterResponse registerUser(
             RegisterRequest request) {
 
-        logger.info(
-                "Registration attempt for email: {}",
-                request.getEmail()
-        );
+        logger.info("Registration attempt");
 
         User user = new User();
 
@@ -56,22 +53,25 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
+        RegisterResponse response;
+
         try {
 
-            User savedUser = userRepository.save(user);
+            User savedUser =
+                    userRepository.save(user);
 
-            logger.info(
-                    "User registered successfully. User ID: {}",
-                    savedUser.getId()
-            );
-
-            RegisterResponse response =
-                    new RegisterResponse();
+            response = new RegisterResponse();
 
             response.setId(savedUser.getId());
-            response.setFirstName(savedUser.getFirstName());
-            response.setLastName(savedUser.getLastName());
-            response.setEmail(savedUser.getEmail());
+            response.setFirstName(
+                    savedUser.getFirstName()
+            );
+            response.setLastName(
+                    savedUser.getLastName()
+            );
+            response.setEmail(
+                    savedUser.getEmail()
+            );
             response.setPhoneNumber(
                     savedUser.getPhoneNumber()
             );
@@ -79,84 +79,73 @@ public class AuthService {
                     "User registered successfully"
             );
 
-            return response;
+            logger.info(
+                    "User registration successful"
+            );
 
         } catch (DataIntegrityViolationException ex) {
 
             logger.warn(
-                    "Registration failed because email or phone number already exists: {}",
-                    request.getEmail()
+                    "User registration failed because account details already exist"
             );
 
             throw new ConflictException(
                     "Email or phone number already exists"
             );
         }
+
+        return response;
     }
 
     public LoginResponse loginUser(
             @Valid LoginRequest request) {
 
-        logger.info(
-                "Login attempt for identifier: {}",
-                request.getIdentifier()
-        );
+        logger.info("Login attempt");
 
-        User user = userRepository.findAll()
+        User user = userRepository
+                .findAll()
                 .stream()
                 .filter(existingUser ->
-                        (existingUser.getEmail() != null
-                                && existingUser.getEmail()
-                                .equalsIgnoreCase(
-                                        request.getIdentifier()
-                                ))
-                                ||
-                                (existingUser.getPhoneNumber() != null
-                                        && existingUser
-                                        .getPhoneNumber()
-                                        .equals(
+                        (existingUser.getEmail() != null &&
+                                existingUser.getEmail()
+                                        .equalsIgnoreCase(
                                                 request.getIdentifier()
                                         ))
+                                ||
+                                (existingUser.getPhoneNumber() != null &&
+                                        existingUser.getPhoneNumber()
+                                                .equals(
+                                                        request.getIdentifier()
+                                                ))
                 )
                 .findFirst()
                 .orElse(null);
 
-        LoginResponse response =
-                new LoginResponse();
-
-        if (user != null
-                && request.getPassword() != null
-                && passwordEncoder.matches(
+        if (user == null
+                || request.getPassword() == null
+                || !passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword())) {
 
-            String token =
-                    jwtService.generateToken(
-                            user.getEmail()
-                    );
-
-            logger.info(
-                    "Successful login for user: {}",
-                    user.getEmail()
-            );
-
-            response.setMessage(
-                    "Login successful"
-            );
-
-            response.setToken(token);
-
-        } else {
-
             logger.warn(
-                    "Failed login attempt for identifier: {}",
-                    request.getIdentifier()
+                    "Login failed due to invalid credentials"
             );
 
-            response.setMessage(
-                    "Invalid credentials"
-            );
+            throw new BadCredentialsException("Invalid credentials");
         }
+
+        String token =
+                jwtService.generateToken(
+                        user.getEmail()
+                );
+
+        LoginResponse response =
+                new LoginResponse();
+
+        response.setMessage("Login successful");
+        response.setToken(token);
+
+        logger.info("Login successful");
 
         return response;
     }
@@ -188,11 +177,11 @@ public class AuthService {
                         .getContext()
                         .getAuthentication();
 
-        if (authentication == null
-                || !authentication.isAuthenticated()) {
+        if (authentication == null ||
+                !authentication.isAuthenticated()) {
 
             logger.warn(
-                    "Password change attempted without authentication"
+                    "Password change rejected because user is not authenticated"
             );
 
             response.setMessage(
@@ -213,8 +202,7 @@ public class AuthService {
         if (user == null) {
 
             logger.warn(
-                    "Password change failed. User not found: {}",
-                    email
+                    "Password change failed because user was not found"
             );
 
             response.setMessage(
@@ -229,8 +217,7 @@ public class AuthService {
                 user.getPassword())) {
 
             logger.warn(
-                    "Password change failed due to incorrect current password for user: {}",
-                    email
+                    "Password change failed because current password is incorrect"
             );
 
             response.setMessage(
@@ -248,16 +235,15 @@ public class AuthService {
 
         userRepository.save(user);
 
-        logger.info(
-                "Password changed successfully for user: {}",
-                email
-        );
-
         response.setMessage(
                 "Password changed successfully"
         );
 
         response.setSuccess(true);
+
+        logger.info(
+                "Password changed successfully"
+        );
 
         return response;
     }

@@ -2,14 +2,20 @@ package com.rafay.backend.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler
+        extends ResponseEntityExceptionHandler {
 
     private static final Logger logger =
             LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -18,18 +24,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleConflict(
             ConflictException ex) {
 
-        logger.warn("Conflict: {}", ex.getMessage());
+        logger.warn(
+                "Conflict exception: {}",
+                ex.getMessage()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ex.getMessage());
     }
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<String> handleBadCredentials(
+            BadCredentialsException ex) {
 
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ex.getMessage());
+    }
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<String> handleResourceNotFound(
             ResourceNotFoundException ex) {
 
-        logger.warn("Resource not found: {}", ex.getMessage());
+        logger.warn(
+                "Resource not found: {}",
+                ex.getMessage()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
@@ -40,16 +59,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleIllegalArgumentException(
             IllegalArgumentException ex) {
 
-        logger.warn("Invalid argument: {}", ex.getMessage());
+        logger.warn(
+                "Invalid argument: {}",
+                ex.getMessage()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ex.getMessage());
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<String> handleValidationException(
-            MethodArgumentNotValidException ex) {
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
 
         String message = ex.getBindingResult()
                 .getFieldErrors()
@@ -61,24 +86,42 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("Invalid request");
 
-        logger.warn("Validation failed: {}", message);
+        logger.warn(
+                "Request validation failed: {}",
+                message
+        );
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(message);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleGenericException(
-            Exception ex) {
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(
+            Exception ex,
+            Object body,
+            HttpHeaders headers,
+            HttpStatusCode statusCode,
+            WebRequest request) {
 
-        logger.error(
-                "Unexpected application error",
-                ex
+        if (statusCode.is5xxServerError()) {
+            logger.error(
+                    "Internal server error",
+                    ex
+            );
+        } else {
+            logger.warn(
+                    "HTTP request error: {}",
+                    ex.getMessage()
+            );
+        }
+
+        return super.handleExceptionInternal(
+                ex,
+                body,
+                headers,
+                statusCode,
+                request
         );
-
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("An unexpected error occurred");
     }
 }

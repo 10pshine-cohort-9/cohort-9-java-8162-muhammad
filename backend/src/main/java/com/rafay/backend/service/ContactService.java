@@ -50,10 +50,7 @@ public class ContactService {
             ContactRequest request,
             String userEmail) {
 
-        logger.info(
-                "Creating contact for user: {}",
-                userEmail
-        );
+        logger.info("Contact creation attempt");
 
         User user =
                 userRepository
@@ -64,21 +61,17 @@ public class ContactService {
                                 )
                         );
 
-        Contact contact =
-                new Contact();
+        Contact contact = new Contact();
 
         contact.setFirstName(
                 request.getFirstName()
         );
-
         contact.setLastName(
                 request.getLastName()
         );
-
         contact.setTitle(
                 request.getTitle()
         );
-
         contact.setUser(user);
 
         Contact savedContact =
@@ -95,16 +88,16 @@ public class ContactService {
                         email.setEmail(
                                 emailRequest.getEmail()
                         );
-
                         email.setLabel(
                                 emailRequest.getLabel()
                         );
-
                         email.setContact(
                                 savedContact
                         );
 
-                        contactEmailRepository.save(email);
+                        contactEmailRepository.save(
+                                email
+                        );
                     });
         }
 
@@ -119,23 +112,21 @@ public class ContactService {
                         phone.setPhoneNumber(
                                 phoneRequest.getPhoneNumber()
                         );
-
                         phone.setLabel(
                                 phoneRequest.getLabel()
                         );
-
                         phone.setContact(
                                 savedContact
                         );
 
-                        contactPhoneRepository.save(phone);
+                        contactPhoneRepository.save(
+                                phone
+                        );
                     });
         }
 
         logger.info(
-                "Contact created successfully. Contact ID: {}, User: {}",
-                savedContact.getId(),
-                userEmail
+                "Contact created successfully"
         );
 
         return mapToResponse(savedContact);
@@ -146,9 +137,7 @@ public class ContactService {
             String userEmail) {
 
         logger.info(
-                "Fetching contact ID: {} for user: {}",
-                contactId,
-                userEmail
+                "Contact retrieval attempt"
         );
 
         Contact contact =
@@ -164,9 +153,7 @@ public class ContactService {
                         );
 
         logger.info(
-                "Contact ID: {} retrieved successfully for user: {}",
-                contactId,
-                userEmail
+                "Contact retrieved successfully"
         );
 
         return mapToResponse(contact);
@@ -177,10 +164,7 @@ public class ContactService {
             Pageable pageable) {
 
         logger.info(
-                "Fetching contacts for user: {}, page: {}, size: {}",
-                userEmail,
-                pageable.getPageNumber(),
-                pageable.getPageSize()
+                "Contact list retrieval attempt"
         );
 
         Page<Contact> contacts =
@@ -189,7 +173,13 @@ public class ContactService {
                         pageable
                 );
 
-        return contacts.map(this::mapToResponse);
+        logger.info(
+                "Contact list retrieved successfully"
+        );
+
+        return contacts.map(
+                this::mapToResponse
+        );
     }
 
     public Page<ContactResponse> searchContacts(
@@ -198,11 +188,7 @@ public class ContactService {
             Pageable pageable) {
 
         logger.info(
-                "Searching contacts for user: {}, search: '{}', page: {}, size: {}",
-                userEmail,
-                search,
-                pageable.getPageNumber(),
-                pageable.getPageSize()
+                "Contact search attempt"
         );
 
         Page<Contact> contacts =
@@ -215,7 +201,13 @@ public class ContactService {
                                 pageable
                         );
 
-        return contacts.map(this::mapToResponse);
+        logger.info(
+                "Contact search completed successfully"
+        );
+
+        return contacts.map(
+                this::mapToResponse
+        );
     }
 
     private ContactResponse mapToResponse(
@@ -248,7 +240,8 @@ public class ContactService {
                         .stream()
                         .map(email -> {
 
-                            ContactEmailResponse emailResponse =
+                            ContactEmailResponse
+                                    emailResponse =
                                     new ContactEmailResponse();
 
                             emailResponse.setId(
@@ -277,7 +270,8 @@ public class ContactService {
                         .stream()
                         .map(phone -> {
 
-                            ContactPhoneResponse phoneResponse =
+                            ContactPhoneResponse
+                                    phoneResponse =
                                     new ContactPhoneResponse();
 
                             phoneResponse.setId(
@@ -310,9 +304,7 @@ public class ContactService {
             String userEmail) {
 
         logger.info(
-                "Updating contact ID: {} for user: {}",
-                contactId,
-                userEmail
+                "Contact update attempt"
         );
 
         Contact contact =
@@ -370,7 +362,9 @@ public class ContactService {
                                 updatedContact
                         );
 
-                        contactEmailRepository.save(email);
+                        contactEmailRepository.save(
+                                email
+                        );
                     });
         }
 
@@ -402,17 +396,19 @@ public class ContactService {
                                 updatedContact
                         );
 
-                        contactPhoneRepository.save(phone);
+                        contactPhoneRepository.save(
+                                phone
+                        );
                     });
         }
 
         logger.info(
-                "Contact ID: {} updated successfully for user: {}",
-                contactId,
-                userEmail
+                "Contact updated successfully"
         );
 
-        return mapToResponse(updatedContact);
+        return mapToResponse(
+                updatedContact
+        );
     }
 
     @Transactional
@@ -421,9 +417,7 @@ public class ContactService {
             String userEmail) {
 
         logger.info(
-                "Deleting contact ID: {} for user: {}",
-                contactId,
-                userEmail
+                "Contact deletion attempt"
         );
 
         Contact contact =
@@ -451,9 +445,7 @@ public class ContactService {
         contactRepository.delete(contact);
 
         logger.info(
-                "Contact ID: {} deleted successfully for user: {}",
-                contactId,
-                userEmail
+                "Contact deleted successfully"
         );
     }
 }
