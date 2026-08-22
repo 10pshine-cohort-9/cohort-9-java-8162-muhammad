@@ -6,6 +6,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -17,7 +19,13 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter
+        extends OncePerRequestFilter {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(
+                    JwtAuthenticationFilter.class
+            );
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -40,32 +48,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader =
                 request.getHeader("Authorization");
 
-        // No JWT → continue the request
-        if (authHeader == null ||
-                !authHeader.startsWith("Bearer ")) {
+        // No JWT -> continue the request
+        if (authHeader == null
+                || !authHeader.startsWith("Bearer ")) {
 
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
-        String token = authHeader.substring(7);
+        String token =
+                authHeader.substring(7);
 
-        // Parse and validate JWT once
+        logger.debug(
+                "JWT authentication attempt for request: {}",
+                request.getRequestURI()
+        );
+
         Optional<String> subject =
                 jwtService.extractSubject(token);
 
-        // Invalid JWT → continue without authentication
+        // Invalid JWT -> continue without authentication
         if (subject.isEmpty()) {
 
-            filterChain.doFilter(request, response);
+            logger.warn(
+                    "Invalid JWT received for request: {}",
+                    request.getRequestURI()
+            );
+
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
-        String email = subject.get();
+        String email =
+                subject.get();
 
-        User user = userRepository
-                .findByEmail(email)
-                .orElse(null);
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElse(null);
 
         if (user != null) {
 
@@ -83,9 +111,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder
                     .getContext()
-                    .setAuthentication(authentication);
+                    .setAuthentication(
+                            authentication
+                    );
+
+            logger.debug(
+                    "JWT authentication successful for user: {}",
+                    email
+            );
+
+        } else {
+
+            logger.warn(
+                    "JWT subject does not belong to an existing user: {}",
+                    email
+            );
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(
+                request,
+                response
+        );
     }
 }
