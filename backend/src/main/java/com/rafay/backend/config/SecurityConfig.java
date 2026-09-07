@@ -33,6 +33,11 @@ public class SecurityConfig {
             HttpSecurity http) throws Exception {
 
         http
+                // This backend is a stateless JWT API: authentication is carried in the
+                // Authorization header, not in cookies or server-side sessions. Browser clients
+                // do not rely on session cookies here, so CSRF protection is intentionally
+                // disabled only for this REST API while every protected endpoint still requires
+                // authentication via the JWT filter.
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .cors(cors -> {})

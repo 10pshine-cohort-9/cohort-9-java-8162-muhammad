@@ -1,0 +1,73 @@
+name: SonarCloud
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  sonarqube:
+    name: Sonar analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --ignore-scripts
+
+      - name: Run backend tests and generate JaCoCo report
+        working-directory: backend
+        run: mvn -B verify
+
+      - name: SonarCloud scan
+        working-directory: backend
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          mvn -B
+          org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar
+          -Dsonar.projectBaseDir=..
+          -Dsonar.organization=rafay-imran8
+          -Dsonar.projectKey=rafay-imran8_prj
+          -Dsonar.projectName=prj
+          -Dsonar.projectVersion=1.0
+          -Dsonar.sourceEncoding=UTF-8
+          -Dsonar.sources=src/main/java,../frontend/src
+          -Dsonar.tests=src/test/java
+          -Dsonar.java.binaries=target/classes
+          -Dsonar.java.test.binaries=target/test-classes
+          -Dsonar.java.source=21
+          -Dsonar.javascript.file.suffixes=.js,.jsx,.mjs,.cjs
+          -Dsonar.typescript.file.suffixes=.ts,.tsx
+          -Dsonar.junit.reportPaths=target/surefire-reports
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.exclusions=**/node_modules/**,**/target/**,**/dist/**,**/build/**,**/coverage/**,**/.idea/**,**/.git/**,**/frontend/public/**
+          -Dsonar.coverage.exclusions=src/main/java/**/config/**,src/main/java/**/dto/**,src/main/java/**/entity/**,src/main/java/**/exception/**,src/main/java/com/rafay/backend/BackendApplication.java
